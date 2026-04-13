@@ -13,6 +13,14 @@ using System.Globalization;
 using System.IO;
 
 
+public class UploadResult
+{
+    public required string InvoiceNumber { get; set; }
+    public bool Success { get; set; }
+    public DateTime Timestamp { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
@@ -91,6 +99,11 @@ public class Worker : BackgroundService
     
     private async Task ProcessFileAsync(string? file)
     {
+        if (string.IsNullOrEmpty(file))
+        {
+            _logger.LogWarning("File path is null or empty");
+            return;
+        }
 
          _logger.LogInformation("New file detected: {FullPath}", file);
        
@@ -104,6 +117,8 @@ public class Worker : BackgroundService
          _logger.LogInformation("File unzipped to: {ExtractPath}", extractPath);
 
         var csvFiles = Directory.GetFiles(extractPath,"*.csv"); // TODO:  Add logic to check for just one csv file
+
+        var uploadResults = new List<UploadResult>();
 
         foreach (var csvFile in csvFiles)
         {
@@ -156,8 +171,25 @@ public class Worker : BackgroundService
 
                 bool success = await _apiClient.UploadFileAndMetadataToLF(extractPath, invoiceFileName, metadata, _stoppingToken);
 
+                uploadResults.Add(new UploadResult
+                {
+                    InvoiceNumber = metadata.InvoiceNumber,
+                    Success = success,
+                    Timestamp = DateTime.Now,
+                    ErrorMessage = success ? string.Empty : "Upload failed" // Can be enhanced later
+                });
             }
         }
+
+        // Write results to CSV
+        var resultsFilePath = Path.Combine(extractPath, "upload_results.csv");
+        using (var writer = new StreamWriter(resultsFilePath))
+        using (var csvWriter = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
+        {
+            csvWriter.WriteRecords(uploadResults);
+        }
+
+        _logger.LogInformation("Results written to {ResultsFile}", resultsFilePath);
 
 
     }
