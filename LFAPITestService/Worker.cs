@@ -36,23 +36,25 @@ public class Worker : BackgroundService
         _stoppingToken = stoppingToken;
 
         _logger.LogInformation("AR Processor Service Starting");
-        _logger.LogInformation("Information: {Info}", "");
 
-       
         var inputDir = _settings.Value.MonitorFilePath;
+        if (!Directory.Exists(inputDir))
+        {
+            _logger.LogInformation("Information: {Info}", "Input directory does not exist. Creating it.");
+            Directory.CreateDirectory(inputDir);
+        }
+ 
         var processedFiles = new HashSet<string>(); // Track processed files
-
-        
-        var decryptedDir = Path.Combine(inputDir, "Decrypted"); // Target folder for processed files
-        // Ensure decrypted folder exists
-        Directory.CreateDirectory(decryptedDir);
+   
+        var extractedDir = Path.Combine(inputDir, "Extracted"); // Target folder for processed files
+        Directory.CreateDirectory(extractedDir);
 
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var files = Directory.GetFiles(inputDir,"*.gpg");
+                var files = Directory.GetFiles(inputDir,"*.zip");
 
                 foreach (var file in files)
                 {
@@ -66,7 +68,7 @@ public class Worker : BackgroundService
                         processedFiles.Add(file);
                         
                         // Move file to decrypted folder after successful processing
-                        var destinationPath = Path.Combine(decryptedDir, Path.GetFileName(file));
+                        var destinationPath = Path.Combine(extractedDir, Path.GetFileName(file));
                         File.Move(file, destinationPath);
 
                     }
@@ -91,23 +93,13 @@ public class Worker : BackgroundService
     {
 
          _logger.LogInformation("New file detected: {FullPath}", file);
-        // decrypt - unzip - process
-
-        // Decrypt
-        string baseFilePath = Path.Combine(Path.GetDirectoryName(file),Path.GetFileNameWithoutExtension(file));
-        string decryptedFilePath = baseFilePath + "_decrypted.zip";
-        string privateKeyPath = _settings.Value.PrivateKeyPath;
-
-        _logger.LogInformation("Decrypting file: {FullPath}", file);
-
-        FileDecryptor.DecryptFile(file, decryptedFilePath, privateKeyPath, _settings.Value.PassPhrase);
-
-        _logger.LogInformation("File decrypted: {FullPath}",decryptedFilePath);
-        string extractPath = baseFilePath;
+       
+        string extractPath = Path.Combine(Path.GetDirectoryName(file),Path.GetFileNameWithoutExtension(file));
+      
         _logger.LogInformation("Unzipping file to : {ExtractPath}",extractPath);         
         
         // Unzip
-        ZipExtractor.Extract(decryptedFilePath, extractPath);
+        ZipExtractor.Extract(file, extractPath);
 
          _logger.LogInformation("File unzipped to: {ExtractPath}", extractPath);
 
