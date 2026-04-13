@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-TWGKafkaConsumerService-4207e4ae-4a83-4b26-a49a-953531a2f2d4</UserSecretsId>
+    <EnvironmentName Condition="'$(EnvironmentName)' == ''">Development</EnvironmentName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" Version="2.10.0"/>
+    <PackageReference Include="Elastic.CommonSchema.Log4net" Version="9.0.0"/>
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.5"/>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.5"/>
+    <PackageReference Include="Microsoft.Extensions.Logging.Log4Net.AspNetCore" Version="8.0.0"/>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2"/>
+    <PackageReference Include="CsvHelper" Version="33.1.0"/>
+    <None Update="log4net.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LFApiClient\LFApiClient.csproj"/>
+  </ItemGroup>
+</Project>

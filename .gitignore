@@ -1,0 +1,77 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+properties/launchSettings.json
+
+# .NET Core-generated files
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET-specific
+wwwroot/lib/
+appsettings.Local.json
+secrets.json
+
+# Logs
+*.log
+Logs/
+*.tlog
+
+# Packages
+*.nupkg
+*.snupkg
+*.nuspec
+packages/
+.nuget/
+
+# Others
+*.vspscc
+*.vssscc
+_ReSharper*/
+*.DotSettings.user
+
+# Rider
+.idea/
+*.sln.iml
+
+# Temporary files
+~$*
+*.tmp
+*.bak
+
+# Test results
+TestResults/
+*.coverage
+*.coveragexml
+*.trx
+
+# Publish output
+publish/
+out/
+
+# Docker artifacts
+**/*.container.cache
+
+# Global tool artifacts
+**/.store/
+**/.tools/
+
+# JetBrains Rider
+.idea/
+
+# Local tool manifest
+.dotnet-tools.json

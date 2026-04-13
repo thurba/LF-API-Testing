@@ -1,0 +1,17 @@
+# IMPORTANT - DO NOT REMOVE THIS FILE
+# This is a file for storing metadata for Backstage.
+# Several TWG dashboard components also rely on values in this file.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "dm-twg-laserfiche-kafka-consumer-service"
+  description: "dm-twg-laserfiche-kafka-consumer-service"
+  annotations:
+    backstage.io/techdocs-ref: "url:https://bitbucket.org/twgnz/dm-twg-laserfiche-kafka-consumer-service.git"
+    twg.co.nz/template-name: "do-goldenpath-empty-template"
+    twg.co.nz/created-datetime: "2025-07-22T23:16:30Z"
+    twg.co.nz/created-by: "Kamal.Mistry@thewarehouse.co.nz"
+spec:
+  type: service
+  lifecycle: experimental
+  owner: dm-team

@@ -1,0 +1,117 @@
+nameOverride: dm-twg-laserfiche-kafka-consumer-service
+fullnameOverride: dm-twg-laserfiche-kafka-consumer-service
+# use command line parameter in pipeline to keep it dynamic per build
+#appVersion: someVersionForApplication
+
+image:
+  repository: 'twgorg/dm-twg-laserfiche-kafka-consumer-service'
+
+replicaCount: 1
+
+podAnnotations:
+  co.elastic.logs/enabled: 'true'
+  # product group in elasticsearch to provide same lifecycle policies and patterns
+  twg.elastic.logs/product: "dm"
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8050"
+
+extraEnvs:
+  - name: DOTNET_ENVIRONMENT
+    value: "Production"
+  - name: ENV
+    value: 'prod'
+  - name: LAUNCHDARKLY_SDKKEY
+    valueFrom:
+      secretKeyRef:
+        name: dm-twg-laserfiche-kafka-consumer-service-secrets
+        key: LAUNCHDARKLY_SDKKEY
+  - name: Kafka__BootstrapServers
+    value: "pkc-4n66v.australiaeast.azure.confluent.cloud:9092"
+  - name: Kafka__SecurityProtocol
+    value: "SASL_SSL"
+  - name: Kafka__SaslMechanism
+    value: "PLAIN"
+  - name: Kafka__SaslUsername
+    valueFrom:
+      secretKeyRef:
+        name: dm-twg-laserfiche-kafka-consumer-service-secrets
+        key: KAFKA_USERNAME
+  - name: Kafka__SaslPassword
+    valueFrom:
+      secretKeyRef:
+        name: dm-twg-laserfiche-kafka-consumer-service-secrets
+        key: KAFKA_PASSWORD
+  - name: Kafka__GroupId
+    value: "laserfiche-prod-group"
+  - name: Kafka__topic
+    value: "twg.private.oic.finance.purchase-invoice-trade-v2"
+  - name: LaserficheAPI__APIServer
+    value: "https://laserfiche.thewarehousegroup.net/LFRepositoryAPI/v1/Repositories"
+  - name: LaserficheAPI__BaseUrl
+    value: "https://laserfiche.thewarehousegroup.net/LFRepositoryAPI"
+  - name: LaserficheAPI__Username
+    valueFrom:
+      secretKeyRef:
+        name: dm-twg-laserfiche-kafka-consumer-service-secrets
+        key: LASERFICHE_API_USERNAME
+  - name: LaserficheAPI__Password
+    valueFrom:
+      secretKeyRef:
+        name: dm-twg-laserfiche-kafka-consumer-service-secrets
+        key: LASERFICHE_API_PASSWORD
+  - name: LaserficheAPI__RepositoryId
+    value: "TWG-Financial"
+
+ingress:
+  enabled: true
+  host: 'logs-prod-aks.twg.co.nz'
+  prefix: '/dm-twg-laserfiche-kafka-consumer-service'
+  stripPrefix: true
+  tls:
+    enabled: true
+
+resources:
+  limits:
+    memory: '512Mi'
+    cpu: '400m'
+  requests:
+    memory: '256Mi'
+    cpu: '250m'
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podSecurityContext: {}
+
+securityContext:
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+configmap:
+  enabled: false
+
+metrics:
+  enabled: true
+
+service:
+  type: ClusterIP
+  port: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+chartTest:
+  enabled: false
+
+actuator:
+  enabled: true

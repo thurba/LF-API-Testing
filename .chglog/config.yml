@@ -1,0 +1,9 @@
+style: "bitbucket"
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://bitbucket.org/twgnz/dm-twg-laserfiche-kafka-consumer-service
+
+options:
+  tag_filter_pattern: '^(dev|test|prod)$'
+  sort: "date"

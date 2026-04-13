@@ -1,0 +1,173 @@
+definitions:
+  steps:
+    - step: &build-scan
+        name: Build and Scan project
+        runs-on:
+          - self.hosted
+          - linux.shell
+          - docker
+          - gp.build
+          - k3s
+          - spot
+        condition: &skip-no-code-changes
+          changesets:
+            includePaths:
+              - "Dockerfile"
+              - "bitbucket-pipelines.yml"
+              - "catalog-info.yaml"
+              - "LFApiClient/**"
+              - "TWGKafkaConsumerService/**"
+              - "certs/**"
+        script:
+          - export DOCKER_HOST=""
+          - docker login --username "${DOCKER_HUB_USER}" --password "${DOCKER_HUB_PASSWORD}"
+          - export BRANCH_ID=$([ "${BITBUCKET_PR_ID}" ] && echo "PR-${BITBUCKET_PR_ID}" || echo "master")
+          - |
+            docker build -t twgorg/${BITBUCKET_REPO_SLUG}:${BITBUCKET_COMMIT} --pull --no-cache .
+          - |
+            if [ "${SNYK_SCAN_ENABLED}" = "true" ]; then
+
+              docker run \
+              --entrypoint '' \
+              -e SNYK_TOKEN="${SNYK_TOKEN}" \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v $(pwd):/workspace \
+              -w /workspace \
+              snyk/snyk:docker \
+              sh -c "snyk --org=${SNYK_ORG} container test --json-file-output=snyk-container-analysis.json twgorg/${BITBUCKET_REPO_SLUG}:${BITBUCKET_COMMIT} --file=Dockerfile --exclude-base-image-vulns" || true
+              curl --silent --show-error --include --fail -u "${NEXUS_CREDS_USR}:${NEXUS_CREDS_PSW}" -H 'Content-Type: text/json; charset=UTF-8' --upload-file snyk-container-analysis.json "${NEXUS_REPO_BASE_URL}/repository/components/${BITBUCKET_REPO_SLUG}/${BRANCH_ID}/${BITBUCKET_BUILD_NUMBER}/snyk-container-analysis.json"
+
+              docker run \
+              --entrypoint '' \
+              -e SNYK_TOKEN="${SNYK_TOKEN}" \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v $(pwd):/workspace \
+              -w /workspace \
+              snyk/snyk:docker \
+              sh -c "snyk --org=${SNYK_ORG} container monitor --project-tags=source=docker,team=${SNYK_ORG} twgorg/${BITBUCKET_REPO_SLUG}:${BITBUCKET_COMMIT}"
+
+            else
+              echo "SNYK scan is disabled via repository or workspace variable SNYK_SCAN_ENABLED (set to false)."
+            fi
+
+          - |
+            if [ ${BRANCH_ID} = "master" ]; then
+              echo "Uploading image to docker registry"
+              docker login --username "${DOCKER_HUB_USER}" --password "${DOCKER_HUB_PASSWORD}"
+              docker push twgorg/${BITBUCKET_REPO_SLUG}:${BITBUCKET_COMMIT}
+            fi
+
+    - step: &dependency-and-static-analysis-security-scan
+        name: Dependency & Static analysis security scan
+        runs-on:
+          - self.hosted
+          - linux.shell
+          - docker
+          - gp.build
+          - spot
+          - k3s
+        condition: *skip-no-code-changes
+        script:
+          - export DOCKER_HOST=""
+          - export BRANCH_ID=$([ "${BITBUCKET_PR_ID}" ] && echo "PR-${BITBUCKET_PR_ID}" || echo "master")
+          - |
+            if [ "${SNYK_SCAN_ENABLED}" = "true" ]; then
+              docker run \
+              --entrypoint '' \
+              -e SNYK_TOKEN="${SNYK_TOKEN}" \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v $(pwd):/workspace \
+              -w /workspace \
+              snyk/snyk:docker \
+              sh -c "snyk --org=${SNYK_ORG} code test --severity-threshold=${SNYK_CODE_THRESHOLD} --json-file-output=snyk-code-analysis.json" || true
+              curl --silent --show-error --include --fail -u "${NEXUS_CREDS_USR}:${NEXUS_CREDS_PSW}" -H 'Content-Type: text/json; charset=UTF-8' --upload-file snyk-code-analysis.json "${NEXUS_REPO_BASE_URL}/repository/components/${BITBUCKET_REPO_SLUG}/${BRANCH_ID}/bbp-${BITBUCKET_BUILD_NUMBER}/snyk-code-analysis.json" || true
+
+            else
+              echo "SNYK scan is disabled via repository or workspace variable SNYK_SCAN_ENABLED (set to false)."
+            fi
+
+    - step: &generate-changelog
+        name: Generate changelog
+        runs-on:
+          - self.hosted
+          - linux.shell
+          - docker
+          - gp.build
+          - spot
+          - k3s
+        script:
+          - export DOCKER_HOST=""
+          - export BRANCH_ID=$([ "${BITBUCKET_PR_ID}" ] && echo "PR-${BITBUCKET_PR_ID}" || echo "master")
+          - |
+            echo "Generating changelog..."
+            docker run --entrypoint '' -v "$(pwd):/repo" -w /repo quay.io/git-chglog/git-chglog:0.15.1 git-chglog --next-tag "Unreleased" --output "${CHANGELOG_FILENAME}"
+            echo "Changelog generated."
+            cat "${CHANGELOG_FILENAME}"
+            curl --silent --show-error --include --fail -u "${NEXUS_CREDS_USR}:${NEXUS_CREDS_PSW}" -H 'Content-Type: text/json; charset=UTF-8' --upload-file "${CHANGELOG_FILENAME}" "${NEXUS_REPO_BASE_URL}/repository/components/${BITBUCKET_REPO_SLUG}/${BRANCH_ID}/${BITBUCKET_BUILD_NUMBER}/${CHANGELOG_FILENAME}"
+
+    - step: &deploy
+        name: Deploy
+        runs-on:
+          - self.hosted
+          - linux.shell
+          - docker
+          - gp.deploy
+          - dedicated
+          - prod
+        script:
+          - export DOCKER_HOST=""
+          - export HELM_RELEASE_NAME="${BITBUCKET_REPO_SLUG:0:53}"
+          - export HELM_CHART_NAME="do-container-deployment"
+          - export HELM_CHART_VERSION="0.1.27"
+          - export HELM_CHART_DOWNLOAD_DIRECTORY="./helm-chart-${HELM_CHART_NAME}-${HELM_CHART_VERSION}"
+          - export HELM_CHART_DIRECTORY="${HELM_CHART_DOWNLOAD_DIRECTORY}/${HELM_CHART_NAME}"
+          - export K8S_CLUSTER_ENDPOINT="AKS_${BITBUCKET_DEPLOYMENT_ENVIRONMENT^^}_CLUSTER_ENDPOINT"
+          - export K8S_CA_CRT="AKS_${BITBUCKET_DEPLOYMENT_ENVIRONMENT^^}_CA_CRT"
+          - export K8S_TOKEN="AKS_${BITBUCKET_DEPLOYMENT_ENVIRONMENT^^}_TOKEN"
+          - export K8S_NAMESPACE="${BITBUCKET_PROJECT_KEY,,}-${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,}"
+          - export KUBECONFIG="/tmp/kubeconfig-AKS-${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,}.yaml"
+          - export K8S_TOKEN="${!K8S_TOKEN}"
+          - export K8S_CLUSTER_ENDPOINT="${!K8S_CLUSTER_ENDPOINT}"
+          - echo -e ${!K8S_CA_CRT} > /tmp/ca.crt
+          # Note that we don't pass any of the above variables to Docker explicitly: the double quotes used with the bash command expand them before the docker command runs.
+          # Some variables are escaped with a \ backslash because we don't want them to expand before the command runs, and are defined and assigned inside Docker.
+          # Any double quotes inside the command would also have to be escaped accordingly.
+          - |
+            docker run --entrypoint '' \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v $(pwd):/workspace -v /tmp:/tmp -w /workspace \
+            alpine/k8s:1.27.13 \
+            bash -c "kubectl config set-cluster AKS-${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,} --server=${K8S_CLUSTER_ENDPOINT} --certificate-authority=/tmp/ca.crt --embed-certs=true &&
+            kubectl config set-credentials ${BBP_SERVICE_ACCOUNT} --token=${K8S_TOKEN} &&
+            kubectl config set-context AKS-${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,} --cluster AKS-${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,} --user ${BBP_SERVICE_ACCOUNT} &&
+            kubectl config use-context AKS-${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,} &&
+            helm pull ${HELM_CHART_NAME} --version ${HELM_CHART_VERSION} --untar --untardir ${HELM_CHART_DOWNLOAD_DIRECTORY} --repo ${NEXUS_REPO_BASE_URL}/repository/do-helm-charts --username ${NEXUS_CREDS_USR} --password ${NEXUS_CREDS_PSW} &&
+            yq eval '.appVersion = \"${BITBUCKET_COMMIT}\"' -i ${HELM_CHART_DIRECTORY}/Chart.yaml &&
+            helm upgrade --dry-run --install --namespace ${K8S_NAMESPACE} --values deploy/${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,}/values.yaml --set-string appVersion=${BITBUCKET_COMMIT} ${HELM_RELEASE_NAME} ${HELM_CHART_DOWNLOAD_DIRECTORY}/${HELM_CHART_NAME} &&
+            helm upgrade --atomic --wait --timeout 5m --install --namespace ${K8S_NAMESPACE} --values deploy/${BITBUCKET_DEPLOYMENT_ENVIRONMENT,,}/values.yaml --set-string appVersion=${BITBUCKET_COMMIT} ${HELM_RELEASE_NAME} ${HELM_CHART_DOWNLOAD_DIRECTORY}/${HELM_CHART_NAME}"
+
+pipelines:
+  pull-requests:
+    "**":
+      - step: *dependency-and-static-analysis-security-scan
+      - step: *build-scan
+      - step: *generate-changelog
+
+  branches:
+    master:
+      - step: *dependency-and-static-analysis-security-scan
+      - step: *build-scan
+      - step: *generate-changelog
+      - step:
+          <<: *deploy
+          name: Deploy to dev
+          deployment: dev
+      - step:
+          <<: *deploy
+          name: Deploy to test
+          deployment: test
+      - step:
+          <<: *deploy
+          name: Deploy to prod
+          deployment: prod
+          trigger: manual
