@@ -76,8 +76,8 @@ public class Worker : BackgroundService
                         processedFiles.Add(file);
                         
                         // Move file to decrypted folder after successful processing
-                        var destinationPath = Path.Combine(extractedDir, Path.GetFileName(file));
-                        File.Move(file, destinationPath);
+                        //var destinationPath = Path.Combine(extractedDir, Path.GetFileName(file));
+                        //File.Move(file, destinationPath);
 
                     }
                 }
