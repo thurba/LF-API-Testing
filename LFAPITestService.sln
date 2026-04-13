@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TWGARProcessorService", "TWGARProcessorService\TWGARProcessorService.csproj", "{4FA0A330-9A86-31EB-85EC-786A012C6143}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LFAPITestService", "LFAPITestService\LFAPITestService.csproj", "{4FA0A330-9A86-31EB-85EC-786A012C6143}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LFApiClient", "LFApiClient\LFApiClient.csproj", "{0CCBDCBD-E1AD-4381-A3BB-6DB29C81456E}"
 EndProject

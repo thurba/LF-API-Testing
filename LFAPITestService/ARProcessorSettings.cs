@@ -1,5 +1,5 @@
 
-namespace TWGARProcessorService;
+namespace LFAPITestService;
 
 public class ARProcessorSettings
 {

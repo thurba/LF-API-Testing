@@ -4,7 +4,7 @@ using System.IO;
 using Org.BouncyCastle.Bcpg.OpenPgp;
 using Org.BouncyCastle.Utilities.IO;
 
-namespace TWGARProcessorService;
+namespace LFAPITestService;
 
 public static class FileDecryptor
 {

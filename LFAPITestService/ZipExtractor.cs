@@ -1,4 +1,4 @@
-namespace TWGARProcessorService;
+namespace LFAPITestService;
 
 using System.IO;
 using System.IO.Compression;
