@@ -54,9 +54,8 @@ public class Worker : BackgroundService
  
         var processedFiles = new HashSet<string>(); // Track processed files
    
-        var extractedDir = Path.Combine(inputDir, "Extracted"); // Target folder for processed files
-        Directory.CreateDirectory(extractedDir);
-
+        var processedDir = Path.Combine(inputDir, "Processed"); // Target folder for processed files
+        Directory.CreateDirectory(processedDir);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -75,9 +74,11 @@ public class Worker : BackgroundService
 
                         processedFiles.Add(file);
                         
-                        // Move file to decrypted folder after successful processing
-                        //var destinationPath = Path.Combine(extractedDir, Path.GetFileName(file));
-                        //File.Move(file, destinationPath);
+                        // Move file to processed folder after successful processing with timestamp
+                        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                        var fileName = Path.GetFileNameWithoutExtension(file) + "_" + timestamp + Path.GetExtension(file);
+                        var destinationPath = Path.Combine(processedDir, fileName);
+                        File.Move(file, destinationPath, overwrite: false);
 
                     }
                 }
@@ -167,7 +168,7 @@ public class Worker : BackgroundService
 
                 };
 
-                string invoiceFileName = "INV_" + metadata.InvoiceNumber + "_1";
+                string invoiceFileName = metadata.InvoiceNumber;
 
                 bool success = await _apiClient.UploadFileAndMetadataToLF(extractPath, invoiceFileName, metadata, _stoppingToken);
 

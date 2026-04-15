@@ -318,9 +318,28 @@ public class ApiClient
             
             var result = await client.EntriesClient.ImportDocumentAsync(_apiOptions.Value.RepositoryId, _apiOptions.Value.ARWorkingFolderEntryId, invoiceFileName, true, null, GetFileParameter(invoiceFilePath,invoiceFileName), postEntryRequest, cancellationToken);
 
-            _logger.LogInformation("ImportDocumentAsync: Entry Result: TemplateId = {EntryId}", result.Operations.EntryCreate.EntryId);
+            _logger.LogInformation("ImportDocumentAsync: Entry Result: EntryId = {EntryId}", result.Operations.EntryCreate.EntryId);
 
-            return result.Operations.EntryCreate.EntryId > 0;
+            _logger.LogInformation("ImportDocumentAsync: " + result.Operations.SetTemplate.Exceptions != null && result.Operations.SetTemplate.Exceptions.Count > 0
+                ? $"Errors: {string.Join(" || ", result.Operations.SetTemplate.Exceptions.Select(e => e.Message))}" 
+                : "No template errors reported.");
+
+            _logger.LogInformation("ImportDocumentAsync: " + result.Operations.SetFields.Exceptions != null && result.Operations.SetFields.Exceptions.Count > 0
+            ? $"Errors: {string.Join(" || ", result.Operations.SetFields.Exceptions.Select(e => e.Message))}" 
+            : "No field errors reported.");
+
+            _logger.LogInformation("ImportDocumentAsync: " + result.Operations.SetEdoc.Exceptions != null && result.Operations.SetEdoc.Exceptions.Count > 0
+            ? $"Errors: {string.Join(" || ", result.Operations.SetEdoc.Exceptions.Select(e => e.Message))}" 
+            : "No edoc errors reported.");
+
+            int errorCount = (result.Operations.EntryCreate.Exceptions?.Count() ?? 0) +
+                             (result.Operations.SetTemplate.Exceptions?.Count() ?? 0) + 
+                             (result.Operations.SetFields.Exceptions?.Count() ?? 0) + 
+                             (result.Operations.SetEdoc.Exceptions?.Count() ?? 0);
+
+            _logger.LogInformation("ImportDocumentAsync: Total errors: {ErrorCount}", errorCount);
+
+            return errorCount != 0;
             
 
         }
