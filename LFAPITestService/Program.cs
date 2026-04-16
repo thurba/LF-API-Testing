@@ -10,10 +10,10 @@ internal class Program
 
         if (OperatingSystem.IsWindows())
         {
-            // Enabe Windows support only if on Windows + running as service
+            // Enable Windows support only if on Windows + running as service
             builder.Services.AddWindowsService(options =>
             {
-                options.ServiceName = "ARProcessorService";
+                options.ServiceName = "LFAPITestService";
             });
 
         }
@@ -24,6 +24,13 @@ internal class Program
         builder.Services.AddSingleton<ApiClient>(sp =>
             new ApiClient(
                 sp.GetRequiredService<ILogger<ApiClient>>(),
+                sp.GetRequiredService<IHttpClientFactory>(),
+                sp.GetRequiredService<IOptions<APISettings>>()   
+                ));
+
+        builder.Services.AddSingleton<HTTPClient>(sp =>
+            new HTTPClient(
+                sp.GetRequiredService<ILogger<HTTPClient>>(),
                 sp.GetRequiredService<IHttpClientFactory>(),
                 sp.GetRequiredService<IOptions<APISettings>>()   
                 ));
