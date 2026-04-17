@@ -26,15 +26,17 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> _logger;
     private readonly IOptions<ARProcessorSettings> _settings;
     private readonly ApiClient _apiClient;
+    private readonly HTTPClient _HTTPClient;
     private readonly IHostApplicationLifetime _hostApplicationLifetime;
     private CancellationToken _stoppingToken;
 
 
-    public Worker(ILogger<Worker> logger, IOptions<ARProcessorSettings> options, ApiClient apiClient, IHostApplicationLifetime hostApplicationLifetime)
+    public Worker(ILogger<Worker> logger, IOptions<ARProcessorSettings> options, ApiClient apiClient, HTTPClient httpClient,IHostApplicationLifetime hostApplicationLifetime)
     {
         _logger = logger;
         _settings = options;
         _apiClient = apiClient;
+        _HTTPClient = httpClient;
         _hostApplicationLifetime = hostApplicationLifetime;
         
     }
@@ -43,7 +45,12 @@ public class Worker : BackgroundService
     {
         _stoppingToken = stoppingToken;
 
-        _logger.LogInformation("AR Processor Service Starting");
+        _logger.LogInformation("LFAPI Test Service Starting");
+
+        // TEST: Refresh token on startup
+        var response = await _HTTPClient.GetAsync("Entries/1", stoppingToken);
+        _logger.LogInformation("Test API call completed with content: {Content}", response.Content.ReadAsStringAsync().Result);
+        // TEST
 
         var inputDir = _settings.Value.MonitorFilePath;
         if (!Directory.Exists(inputDir))
